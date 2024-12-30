@@ -14,6 +14,19 @@ const (
 	Ident
 )
 
+//go:generate stringer -type=OpType
+type OpType int
+
+const (
+	Mul  OpType = 0x01
+	FDiv OpType = 0x02
+	FMod OpType = 0x03
+	IDiv OpType = 0x04
+	Add  OpType = 0x10
+	Sub  OpType = 0x11
+	MaxP OpType = 0x20
+)
+
 type Token struct{}
 
 type Txr struct {
@@ -36,4 +49,5 @@ func main() {
 
 	fmt.Println(txr.error)
 	fmt.Println(Eof)
+	fmt.Println(FDiv)
 }
