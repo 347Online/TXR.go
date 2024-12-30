@@ -30,12 +30,13 @@ const (
 )
 
 type Token struct {
-	TokenType
-	int
+	kind  TokenType
+	pos   int
+	extra any
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("{ %s @ %d }", t.TokenType, t.int)
+	return fmt.Sprintf("{ %s @ %d }", t.kind, t.pos)
 }
 
 type Txr struct {
@@ -61,13 +62,27 @@ func (txr *Txr) Parse(str string) bool {
 			break
 
 		case byte('('):
-			*out = append(*out, Token{ParOpen, start})
+			*out = append(*out, Token{ParOpen, start, nil})
 			break
 
 		case byte(')'):
-			*out = append(*out, Token{ParClose, start})
+			*out = append(*out, Token{ParClose, start, nil})
 			break
 
+		case byte('+'):
+			*out = append(*out, Token{Op, start, Add})
+
+		case byte('-'):
+			*out = append(*out, Token{Op, start, Sub})
+
+		case byte('*'):
+			*out = append(*out, Token{Op, start, Mul})
+
+		case byte('/'):
+			*out = append(*out, Token{Op, start, FDiv})
+
+		case byte('%'):
+			*out = append(*out, Token{Op, start, FMod})
 		default:
 			break
 		}
