@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"unicode"
 )
 
 //go:generate stringer -type=TokenType
@@ -36,7 +38,11 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	return fmt.Sprintf("{ %s @ %d }", t.kind, t.pos)
+	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
+	if t.extra != nil {
+		s = fmt.Sprintf("%s (%d)", s, t.extra)
+	}
+	return fmt.Sprintf("%s }", s)
 }
 
 type Txr struct {
@@ -51,9 +57,11 @@ func (txr *Txr) Throw(msg string, pos int) bool {
 
 func (txr *Txr) Parse(str string) bool {
 	pos := 0
-	for pos < len(str) {
+	length := len(str)
+	out := &txr.parseTokens
+
+	for pos < length {
 		start := pos
-		out := &txr.parseTokens
 		char := str[pos]
 		pos += 1
 
@@ -63,11 +71,9 @@ func (txr *Txr) Parse(str string) bool {
 
 		case byte('('):
 			*out = append(*out, Token{ParOpen, start, nil})
-			break
 
 		case byte(')'):
 			*out = append(*out, Token{ParClose, start, nil})
-			break
 
 		case byte('+'):
 			*out = append(*out, Token{Op, start, Add})
@@ -83,8 +89,24 @@ func (txr *Txr) Parse(str string) bool {
 
 		case byte('%'):
 			*out = append(*out, Token{Op, start, FMod})
+
 		default:
-			break
+			if unicode.IsDigit(rune(char)) {
+				for pos < length {
+					char = str[pos]
+					if unicode.IsDigit(rune(char)) {
+						pos += 1
+					} else {
+						break
+					}
+					numstr := str[start:pos]
+					val, err := strconv.Atoi(numstr)
+					if err != nil {
+						panic(err)
+					}
+					*out = append(*out, Token{Number, start, val})
+				}
+			}
 		}
 	}
 
@@ -97,6 +119,6 @@ func NewTxr() Txr {
 
 func main() {
 	txr := NewTxr()
-	txr.Parse("Hello World ()()")
+	txr.Parse("Hello World ()() 123 456")
 	fmt.Println(txr.parseTokens)
 }
