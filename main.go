@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 //go:generate stringer -type=TokenType
 type TokenType int
@@ -27,7 +29,14 @@ const (
 	MaxP OpType = 0x20
 )
 
-type Token struct{}
+type Token struct {
+	TokenType
+	int
+}
+
+func (t Token) String() string {
+	return fmt.Sprintf("{ %s @ %d }", t.TokenType, t.int)
+}
 
 type Txr struct {
 	parseTokens []Token
@@ -39,15 +48,40 @@ func (txr *Txr) Throw(msg string, pos int) bool {
 	return true
 }
 
+func (txr *Txr) Parse(str string) bool {
+	pos := 0
+	for pos < len(str) {
+		start := pos
+		out := &txr.parseTokens
+		char := str[pos]
+		pos += 1
+
+		switch char {
+		case byte(' '), byte('\t'), byte('\r'), byte('\n'):
+			break
+
+		case byte('('):
+			*out = append(*out, Token{ParOpen, start})
+			break
+
+		case byte(')'):
+			*out = append(*out, Token{ParClose, start})
+			break
+
+		default:
+			break
+		}
+	}
+
+	return false
+}
+
 func NewTxr() Txr {
 	return Txr{error: ""}
 }
 
 func main() {
 	txr := NewTxr()
-	txr.Throw("Test", 0)
-
-	fmt.Println(txr.error)
-	fmt.Println(Eof)
-	fmt.Println(FDiv)
+	txr.Parse("Hello World ()()")
+	fmt.Println(txr.parseTokens)
 }
