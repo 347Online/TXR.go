@@ -39,9 +39,14 @@ type Token struct {
 
 func (t Token) String() string {
 	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
-	if t.extra != nil {
+
+	switch t.extra.(type) {
+	case int:
 		s = fmt.Sprintf("%s (%d)", s, t.extra)
+	case string:
+		s = fmt.Sprintf("%s \"%s\"", s, t.extra)
 	}
+
 	return fmt.Sprintf("%s }", s)
 }
 
@@ -99,7 +104,6 @@ func (txr *Txr) Parse(str string) bool {
 					} else {
 						break
 					}
-
 				}
 				numstr := str[start:pos]
 				val, err := strconv.Atoi(numstr)
