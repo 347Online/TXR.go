@@ -80,10 +80,17 @@ type Txr struct {
 	error  string
 }
 
-func (txr *Txr) Throw(msg string, pos int) bool {
-	txr.error = fmt.Sprintf("%s at position %d", msg, pos)
+func (txr *Txr) Throw(msg string, pos any) bool {
+	txr.error = fmt.Sprintf("%s at position %v", msg, pos)
 	fmt.Println(txr.error)
 	return true
+}
+
+func (txr *Txr) ThrowAt(msg string, tk Token) bool {
+	if tk.kind == TokEof {
+		return txr.Throw(msg, "<EOF>")
+	}
+	return txr.Throw(msg, tk.pos)
 }
 
 func IsAsciiDigit(c byte) bool {
@@ -182,4 +189,5 @@ func main() {
 	txr := NewTxr()
 	txr.Parse("Hello World ()() 123 + 456 ")
 	fmt.Println(txr.tokens)
+	txr.ThrowAt("Test error", txr.tokens[len(txr.tokens)-1])
 }
