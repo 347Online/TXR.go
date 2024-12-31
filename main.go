@@ -146,6 +146,7 @@ func (txr *Txr) Parse(str string) bool {
 		}
 	}
 
+	*out = append(*out, Token{Eof, length, nil})
 	return false
 }
 
@@ -155,6 +156,6 @@ func NewTxr() Txr {
 
 func main() {
 	txr := NewTxr()
-	txr.Parse("Hello World ()() 123 + 456 .")
+	txr.Parse("Hello World ()() 123 + 456 ")
 	fmt.Println(txr.parseTokens)
 }
