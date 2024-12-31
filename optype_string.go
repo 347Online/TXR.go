@@ -8,24 +8,24 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[Mul-1]
-	_ = x[FDiv-2]
-	_ = x[FMod-3]
-	_ = x[IDiv-4]
-	_ = x[Add-16]
-	_ = x[Sub-17]
-	_ = x[MaxP-32]
+	_ = x[OpMul-1]
+	_ = x[OpFDiv-2]
+	_ = x[OpFMod-3]
+	_ = x[OpIDiv-4]
+	_ = x[OpAdd-16]
+	_ = x[OpSub-17]
+	_ = x[OpMaxP-32]
 }
 
 const (
-	_OpType_name_0 = "MulFDivFModIDiv"
-	_OpType_name_1 = "AddSub"
-	_OpType_name_2 = "MaxP"
+	_OpType_name_0 = "OpMulOpFDivOpFModOpIDiv"
+	_OpType_name_1 = "OpAddOpSub"
+	_OpType_name_2 = "OpMaxP"
 )
 
 var (
-	_OpType_index_0 = [...]uint8{0, 3, 7, 11, 15}
-	_OpType_index_1 = [...]uint8{0, 3, 6}
+	_OpType_index_0 = [...]uint8{0, 5, 11, 17, 23}
+	_OpType_index_1 = [...]uint8{0, 5, 10}
 )
 
 func (i OpType) String() string {

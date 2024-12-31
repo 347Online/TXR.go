@@ -9,25 +9,25 @@ import (
 type TokenType int
 
 const (
-	Eof TokenType = iota
-	Op
-	ParOpen
-	ParClose
-	Number
-	Ident
+	TokEof TokenType = iota
+	TokOp
+	TokParOpen
+	TokParClose
+	TokNumber
+	TokIdent
 )
 
 //go:generate stringer -type=OpType
 type OpType int
 
 const (
-	Mul  OpType = 0x01
-	FDiv OpType = 0x02
-	FMod OpType = 0x03
-	IDiv OpType = 0x04
-	Add  OpType = 0x10
-	Sub  OpType = 0x11
-	MaxP OpType = 0x20
+	OpMul  OpType = 0x01
+	OpFDiv OpType = 0x02
+	OpFMod OpType = 0x03
+	OpIDiv OpType = 0x04
+	OpAdd  OpType = 0x10
+	OpSub  OpType = 0x11
+	OpMaxP OpType = 0x20
 )
 
 type Token struct {
@@ -36,15 +36,39 @@ type Token struct {
 	extra any
 }
 
+//go:generate stringer -type=NodeType
+type NodeType int
+
+const (
+	NodeNumber NodeType = iota + 1
+	NodeIdent
+	NodeUnOp
+	NodeBinOp
+)
+
+//go:generate stringer -type=Unary
+type Unary int
+
+const (
+	UnNegate Unary = 1
+)
+
+//go:generate stringer -type=BuildFlag
+type BuildFlag int
+
+const (
+	NoOps BuildFlag = 1
+)
+
 func (t Token) String() string {
 	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
 
 	switch t.kind {
-	case Op:
+	case TokOp:
 		s = fmt.Sprintf("%s, %s", s, t.extra.(OpType))
-	case Number:
+	case TokNumber:
 		s = fmt.Sprintf("%s (%d)", s, t.extra)
-	case Ident:
+	case TokIdent:
 		s = fmt.Sprintf("%s `%s`", s, t.extra)
 	}
 
@@ -85,25 +109,25 @@ func (txr *Txr) Parse(str string) bool {
 			break
 
 		case byte('('):
-			*out = append(*out, Token{ParOpen, start, nil})
+			*out = append(*out, Token{TokParOpen, start, nil})
 
 		case byte(')'):
-			*out = append(*out, Token{ParClose, start, nil})
+			*out = append(*out, Token{TokParClose, start, nil})
 
 		case byte('+'):
-			*out = append(*out, Token{Op, start, Add})
+			*out = append(*out, Token{TokOp, start, OpAdd})
 
 		case byte('-'):
-			*out = append(*out, Token{Op, start, Sub})
+			*out = append(*out, Token{TokOp, start, OpSub})
 
 		case byte('*'):
-			*out = append(*out, Token{Op, start, Mul})
+			*out = append(*out, Token{TokOp, start, OpMul})
 
 		case byte('/'):
-			*out = append(*out, Token{Op, start, FDiv})
+			*out = append(*out, Token{TokOp, start, OpFDiv})
 
 		case byte('%'):
-			*out = append(*out, Token{Op, start, FMod})
+			*out = append(*out, Token{TokOp, start, OpFMod})
 
 		default:
 			if IsAsciiDigit(char) {
@@ -120,7 +144,7 @@ func (txr *Txr) Parse(str string) bool {
 				if err != nil {
 					panic(err)
 				}
-				*out = append(*out, Token{Number, start, val})
+				*out = append(*out, Token{TokNumber, start, val})
 			} else if char == byte('_') || IsAsciiAlphabetic(char) {
 				for pos < length {
 					char = str[pos]
@@ -132,11 +156,11 @@ func (txr *Txr) Parse(str string) bool {
 				}
 				switch name := str[start:pos]; name {
 				case "mod":
-					*out = append(*out, Token{Op, start, FMod})
+					*out = append(*out, Token{TokOp, start, OpFMod})
 				case "div":
-					*out = append(*out, Token{Op, start, IDiv})
+					*out = append(*out, Token{TokOp, start, OpIDiv})
 				default:
-					*out = append(*out, Token{Ident, start, name})
+					*out = append(*out, Token{TokIdent, start, name})
 				}
 			} else {
 				*out = []Token{}
@@ -146,7 +170,7 @@ func (txr *Txr) Parse(str string) bool {
 		}
 	}
 
-	*out = append(*out, Token{Eof, length, nil})
+	*out = append(*out, Token{TokEof, length, nil})
 	return false
 }
 

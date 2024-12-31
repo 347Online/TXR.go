@@ -8,17 +8,17 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[Eof-0]
-	_ = x[Op-1]
-	_ = x[ParOpen-2]
-	_ = x[ParClose-3]
-	_ = x[Number-4]
-	_ = x[Ident-5]
+	_ = x[TokEof-0]
+	_ = x[TokOp-1]
+	_ = x[TokParOpen-2]
+	_ = x[TokParClose-3]
+	_ = x[TokNumber-4]
+	_ = x[TokIdent-5]
 }
 
-const _TokenType_name = "EofOpParOpenParCloseNumberIdent"
+const _TokenType_name = "TokEofTokOpTokParOpenTokParCloseTokNumberTokIdent"
 
-var _TokenType_index = [...]uint8{0, 3, 5, 12, 20, 26, 31}
+var _TokenType_index = [...]uint8{0, 6, 11, 21, 32, 41, 49}
 
 func (i TokenType) String() string {
 	if i < 0 || i >= TokenType(len(_TokenType_index)-1) {
