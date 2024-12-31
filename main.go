@@ -46,6 +46,13 @@ const (
 	NodeBinOp
 )
 
+type Node struct {
+	kind NodeType
+	pos  int
+	lhs  any
+	rhs  any
+}
+
 //go:generate stringer -type=Unary
 type Unary int
 
@@ -57,7 +64,7 @@ const (
 type BuildFlag int
 
 const (
-	NoOps BuildFlag = 1
+	FlagNoOps BuildFlag = 1
 )
 
 func (t Token) String() string {
@@ -75,9 +82,16 @@ func (t Token) String() string {
 	return fmt.Sprintf("%s }", s)
 }
 
+func (n Node) String() string {
+	return fmt.Sprintf("<%s @ %d | lhs: %v, rhs: %v>", n.kind, n.pos, n.lhs, n.rhs)
+}
+
 type Txr struct {
-	tokens []Token
-	error  string
+	tokens    []Token
+	error     string
+	buildPos  int
+	buildLen  int
+	buildNode Node
 }
 
 func (txr *Txr) Throw(msg string, pos any) bool {
@@ -181,13 +195,118 @@ func (txr *Txr) Parse(str string) bool {
 	return false
 }
 
+func RemoveIndex[T any](s []T, index int) []T {
+	return append(s[:index], s[:index+1]...)
+}
+
+func (txr *Txr) BuildOps(first Token) bool {
+	nodes := []Node{txr.buildNode}
+	ops := []Token{first}
+	var tk Token
+	for {
+		if txr.BuildExpr(int(FlagNoOps)) {
+			return true
+		}
+		nodes = append(nodes, txr.buildNode)
+		tk = txr.tokens[txr.buildPos]
+		if tk.kind == TokOp {
+			txr.buildPos += 1
+			ops = append(ops, tk)
+		} else {
+			break
+		}
+	}
+	n := len(ops)
+	pmax := int(OpMaxP) >> 4
+	pri := 0
+	for pri < pmax {
+		for i := 0; i < n; i += 1 {
+			tk = ops[i]
+			if (int(tk.extra.(OpType)) >> 4) != pri {
+				continue
+			}
+			nodes[i] = Node{NodeBinOp, tk.pos, nodes[i], nodes[i+1]}
+			nodes = RemoveIndex(nodes, i+1)
+			ops = RemoveIndex(ops, i)
+			n -= 1
+			i -= 1
+		}
+		pri += 1
+	}
+	txr.buildNode = nodes[0]
+	return false
+}
+
+func (txr *Txr) BuildExpr(flags int) bool {
+	tk := txr.tokens[txr.buildPos]
+	txr.buildPos += 1
+
+	switch tk.kind {
+	case TokNumber:
+		txr.buildNode = Node{NodeNumber, tk.pos, tk.extra, nil}
+	case TokIdent:
+		txr.buildNode = Node{NodeIdent, tk.pos, tk.extra, nil}
+	case TokParOpen:
+		if txr.BuildExpr(0) {
+			return true
+		}
+		tk = txr.tokens[txr.buildPos]
+		txr.buildPos += 1
+		if tk.kind != TokParClose {
+			return txr.ThrowAt("Expected a `)`", tk)
+		}
+	case TokOp:
+		switch tk.extra.(OpType) {
+		case OpAdd:
+			if txr.BuildExpr(int(FlagNoOps)) {
+				return true
+			}
+		case OpSub:
+			if txr.BuildExpr(int(FlagNoOps)) {
+				txr.buildNode = Node{NodeUnOp, tk.pos, UnNegate, txr.buildNode}
+			}
+		default:
+			return txr.ThrowAt("Unexpected token", tk)
+		}
+	default:
+		return txr.ThrowAt("Unexpected token", tk)
+	}
+	if (flags & int(FlagNoOps)) == 0 {
+		tk = txr.tokens[txr.buildPos]
+		if tk.kind == TokOp {
+			txr.buildPos += 1
+			if txr.BuildOps(tk) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (txr *Txr) Build() bool {
+	if txr.BuildExpr(0) {
+		return true
+	}
+	if txr.buildPos < txr.buildLen-1 {
+		return txr.ThrowAt("Trailing data", txr.tokens[txr.buildPos])
+	}
+	return false
+}
+
 func NewTxr() Txr {
-	return Txr{error: ""}
+	return Txr{
+		tokens:   []Token{},
+		error:    "",
+		buildPos: 0,
+		buildLen: 0,
+	}
 }
 
 func main() {
 	txr := NewTxr()
-	txr.Parse("Hello World ()() 123 + 456 ")
+	txr.Parse("(10 + 2) * 4")
 	fmt.Println(txr.tokens)
-	txr.ThrowAt("Test error", txr.tokens[len(txr.tokens)-1])
+	txr.Build()
+	fmt.Println(txr.buildNode)
 }

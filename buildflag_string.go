@@ -8,7 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[NoOps-1]
+	_ = x[FlagNoOps-1]
 }
 
 const _BuildFlag_name = "NoOps"
