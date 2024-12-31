@@ -99,13 +99,14 @@ func (txr *Txr) Parse(str string) bool {
 					} else {
 						break
 					}
-					numstr := str[start:pos]
-					val, err := strconv.Atoi(numstr)
-					if err != nil {
-						panic(err)
-					}
-					*out = append(*out, Token{Number, start, val})
+
 				}
+				numstr := str[start:pos]
+				val, err := strconv.Atoi(numstr)
+				if err != nil {
+					panic(err)
+				}
+				*out = append(*out, Token{Number, start, val})
 			}
 		}
 	}
