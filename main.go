@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"unicode"
 )
 
 //go:generate stringer -type=TokenType
@@ -40,11 +39,13 @@ type Token struct {
 func (t Token) String() string {
 	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
 
-	switch t.extra.(type) {
-	case int:
+	switch t.kind {
+	case Op:
+		s = fmt.Sprintf("%s, %s", s, t.extra.(OpType))
+	case Number:
 		s = fmt.Sprintf("%s (%d)", s, t.extra)
-	case string:
-		s = fmt.Sprintf("%s \"%s\"", s, t.extra)
+	case Ident:
+		s = fmt.Sprintf("%s `%s`", s, t.extra)
 	}
 
 	return fmt.Sprintf("%s }", s)
@@ -57,7 +58,16 @@ type Txr struct {
 
 func (txr *Txr) Throw(msg string, pos int) bool {
 	txr.error = fmt.Sprintf("%s at position %d", msg, pos)
+	fmt.Println(txr.error)
 	return true
+}
+
+func IsAsciiDigit(c byte) bool {
+	return c >= byte('0') && c <= byte('9')
+}
+
+func IsAsciiAlphabetic(c byte) bool {
+	return (c >= byte('a') && c <= byte('z')) || (c >= byte('A') && c <= byte('Z'))
 }
 
 func (txr *Txr) Parse(str string) bool {
@@ -96,10 +106,10 @@ func (txr *Txr) Parse(str string) bool {
 			*out = append(*out, Token{Op, start, FMod})
 
 		default:
-			if unicode.IsDigit(rune(char)) {
+			if IsAsciiDigit(char) {
 				for pos < length {
 					char = str[pos]
-					if unicode.IsDigit(rune(char)) {
+					if IsAsciiDigit(char) {
 						pos += 1
 					} else {
 						break
@@ -111,6 +121,27 @@ func (txr *Txr) Parse(str string) bool {
 					panic(err)
 				}
 				*out = append(*out, Token{Number, start, val})
+			} else if char == byte('_') || IsAsciiAlphabetic(char) {
+				for pos < length {
+					char = str[pos]
+					if char == byte('_') || IsAsciiAlphabetic(char) || IsAsciiDigit(char) {
+						pos += 1
+					} else {
+						break
+					}
+				}
+				switch name := str[start:pos]; name {
+				case "mod":
+					*out = append(*out, Token{Op, start, FMod})
+				case "div":
+					*out = append(*out, Token{Op, start, IDiv})
+				default:
+					*out = append(*out, Token{Ident, start, name})
+				}
+			} else {
+				*out = []Token{}
+				msg := fmt.Sprintf("Unexpected character `%c`", char)
+				return txr.Throw(msg, start)
 			}
 		}
 	}
@@ -124,6 +155,6 @@ func NewTxr() Txr {
 
 func main() {
 	txr := NewTxr()
-	txr.Parse("Hello World ()() 123 456")
+	txr.Parse("Hello World ()() 123 + 456 .")
 	fmt.Println(txr.parseTokens)
 }
