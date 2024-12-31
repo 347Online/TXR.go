@@ -52,8 +52,8 @@ func (t Token) String() string {
 }
 
 type Txr struct {
-	parseTokens []Token
-	error       string
+	tokens []Token
+	error  string
 }
 
 func (txr *Txr) Throw(msg string, pos int) bool {
@@ -73,7 +73,7 @@ func IsAsciiAlphabetic(c byte) bool {
 func (txr *Txr) Parse(str string) bool {
 	pos := 0
 	length := len(str)
-	out := &txr.parseTokens
+	out := &txr.tokens
 
 	for pos < length {
 		start := pos
@@ -157,5 +157,5 @@ func NewTxr() Txr {
 func main() {
 	txr := NewTxr()
 	txr.Parse("Hello World ()() 123 + 456 ")
-	fmt.Println(txr.parseTokens)
+	fmt.Println(txr.tokens)
 }
