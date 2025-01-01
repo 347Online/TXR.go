@@ -11,9 +11,9 @@ func _() {
 	_ = x[FlagNoOps-1]
 }
 
-const _BuildFlag_name = "NoOps"
+const _BuildFlag_name = "FlagNoOps"
 
-var _BuildFlag_index = [...]uint8{0, 5}
+var _BuildFlag_index = [...]uint8{0, 9}
 
 func (i BuildFlag) String() string {
 	i -= 1
