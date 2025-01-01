@@ -99,12 +99,27 @@ func (n Node) String() string {
 	return fmt.Sprintf("<%s @ %d | lhs: %v, rhs: %v>", n.kind, n.pos, n.lhs, n.rhs)
 }
 
+//go:generate stringer -type ActionType
+type ActionType int
+
+const (
+	ActNumber ActionType = iota + 1
+	ActIdent
+	ActUnOp
+	ActBinOp
+)
+
+type Action struct {
+	kind ActionType
+}
+
 type Txr struct {
-	tokens    []Token
-	error     string
-	buildPos  int
-	buildLen  int
-	buildNode Node
+	tokens      []Token
+	error       string
+	buildPos    int
+	buildLen    int
+	buildNode   Node
+	compileList []Action
 }
 
 func NewTxr() Txr {
