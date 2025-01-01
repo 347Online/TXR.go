@@ -5,6 +5,18 @@ import (
 	"strconv"
 )
 
+func IsAsciiDigit(c byte) bool {
+	return c >= byte('0') && c <= byte('9')
+}
+
+func IsAsciiAlphabetic(c byte) bool {
+	return (c >= byte('a') && c <= byte('z')) || (c >= byte('A') && c <= byte('Z'))
+}
+
+func RemoveIndex[T any](s []T, index int) []T {
+	return append(s[:index], s[:index+1]...)
+}
+
 //go:generate stringer -type=TokenType
 type TokenType int
 
@@ -36,6 +48,35 @@ type Token struct {
 	extra any
 }
 
+func (t Token) String() string {
+	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
+
+	switch t.kind {
+	case TokOp:
+		s = fmt.Sprintf("%s, %s", s, t.extra.(OpType))
+	case TokNumber:
+		s = fmt.Sprintf("%s (%d)", s, t.extra)
+	case TokIdent:
+		s = fmt.Sprintf("%s `%s`", s, t.extra)
+	}
+
+	return fmt.Sprintf("%s }", s)
+}
+
+//go:generate stringer -type=Unary
+type Unary int
+
+const (
+	UnNegate Unary = 1
+)
+
+//go:generate stringer -type=BuildFlag
+type BuildFlag int
+
+const (
+	FlagNoOps BuildFlag = 1
+)
+
 //go:generate stringer -type=NodeType
 type NodeType int
 
@@ -54,35 +95,6 @@ type Node struct {
 	rhs  any
 }
 
-//go:generate stringer -type=Unary
-type Unary int
-
-const (
-	UnNegate Unary = 1
-)
-
-//go:generate stringer -type=BuildFlag
-type BuildFlag int
-
-const (
-	FlagNoOps BuildFlag = 1
-)
-
-func (t Token) String() string {
-	s := fmt.Sprintf("{ %s @ %d", t.kind, t.pos)
-
-	switch t.kind {
-	case TokOp:
-		s = fmt.Sprintf("%s, %s", s, t.extra.(OpType))
-	case TokNumber:
-		s = fmt.Sprintf("%s (%d)", s, t.extra)
-	case TokIdent:
-		s = fmt.Sprintf("%s `%s`", s, t.extra)
-	}
-
-	return fmt.Sprintf("%s }", s)
-}
-
 func (n Node) String() string {
 	return fmt.Sprintf("<%s @ %d | lhs: %v, rhs: %v>", n.kind, n.pos, n.lhs, n.rhs)
 }
@@ -93,6 +105,15 @@ type Txr struct {
 	buildPos  int
 	buildLen  int
 	buildNode Node
+}
+
+func NewTxr() Txr {
+	return Txr{
+		tokens:   []Token{},
+		error:    "",
+		buildPos: 0,
+		buildLen: 0,
+	}
 }
 
 func (txr *Txr) Throw(msg string, pos any) bool {
@@ -106,14 +127,6 @@ func (txr *Txr) ThrowAt(msg string, tk Token) bool {
 		return txr.Throw(msg, "<EOF>")
 	}
 	return txr.Throw(msg, tk.pos)
-}
-
-func IsAsciiDigit(c byte) bool {
-	return c >= byte('0') && c <= byte('9')
-}
-
-func IsAsciiAlphabetic(c byte) bool {
-	return (c >= byte('a') && c <= byte('z')) || (c >= byte('A') && c <= byte('Z'))
 }
 
 func (txr *Txr) Parse(str string) bool {
@@ -194,10 +207,6 @@ func (txr *Txr) Parse(str string) bool {
 
 	*out = append(*out, Token{TokEof, length, nil})
 	return false
-}
-
-func RemoveIndex[T any](s []T, index int) []T {
-	return append(s[:index], s[:index+1]...)
 }
 
 func (txr *Txr) BuildOps(first Token) bool {
@@ -296,15 +305,6 @@ func (txr *Txr) Build() bool {
 		return txr.ThrowAt("Trailing data", txr.tokens[txr.buildPos])
 	}
 	return false
-}
-
-func NewTxr() Txr {
-	return Txr{
-		tokens:   []Token{},
-		error:    "",
-		buildPos: 0,
-		buildLen: 0,
-	}
 }
 
 func main() {
