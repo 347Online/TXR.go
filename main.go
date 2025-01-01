@@ -49,6 +49,7 @@ const (
 type Node struct {
 	kind NodeType
 	pos  int
+	op   any
 	lhs  any
 	rhs  any
 }
@@ -225,7 +226,7 @@ func (txr *Txr) BuildOps(first Token) bool {
 			if (int(tk.extra.(OpType)) >> 4) != pri {
 				continue
 			}
-			nodes[i] = Node{NodeBinOp, tk.pos, nodes[i], nodes[i+1]}
+			nodes[i] = Node{NodeBinOp, tk.pos, nil, nodes[i], nodes[i+1]}
 			nodes = RemoveIndex(nodes, i+1)
 			ops = RemoveIndex(ops, i)
 			n -= 1
@@ -243,9 +244,9 @@ func (txr *Txr) BuildExpr(flags int) bool {
 
 	switch tk.kind {
 	case TokNumber:
-		txr.buildNode = Node{NodeNumber, tk.pos, tk.extra, nil}
+		txr.buildNode = Node{NodeNumber, tk.pos, nil, tk.extra, nil}
 	case TokIdent:
-		txr.buildNode = Node{NodeIdent, tk.pos, tk.extra, nil}
+		txr.buildNode = Node{NodeIdent, tk.pos, nil, tk.extra, nil}
 	case TokParOpen:
 		if txr.BuildExpr(0) {
 			return true
@@ -263,8 +264,9 @@ func (txr *Txr) BuildExpr(flags int) bool {
 			}
 		case OpSub:
 			if txr.BuildExpr(int(FlagNoOps)) {
-				txr.buildNode = Node{NodeUnOp, tk.pos, UnNegate, txr.buildNode}
+				return true
 			}
+			txr.buildNode = Node{NodeUnOp, tk.pos, UnNegate, txr.buildNode, nil}
 		default:
 			return txr.ThrowAt("Unexpected token", tk)
 		}
@@ -285,6 +287,8 @@ func (txr *Txr) BuildExpr(flags int) bool {
 }
 
 func (txr *Txr) Build() bool {
+	txr.buildPos = 0
+	txr.buildLen = len(txr.tokens)
 	if txr.BuildExpr(0) {
 		return true
 	}
