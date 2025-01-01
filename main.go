@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 )
 
@@ -466,8 +467,14 @@ func (txr *Txr) Exec(actions []Action) any {
 }
 
 func main() {
+	if len(os.Args) != 2 {
+		fmt.Fprintln(os.Stderr, "Usage: txr '<expr>'")
+		os.Exit(1)
+	}
+
+	source := os.Args[1]
 	txr := NewTxr()
-	actions, err := txr.Compile("(10 + 2) * 4")
+	actions, err := txr.Compile(source)
 	if err != nil {
 		panic(err)
 	}
