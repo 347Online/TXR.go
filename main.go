@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -88,15 +89,13 @@ const (
 )
 
 type Node struct {
-	kind NodeType
-	pos  int
-	op   any
-	lhs  any
-	rhs  any
+	kind    NodeType
+	pos     int
+	content []any
 }
 
 func (n Node) String() string {
-	return fmt.Sprintf("<%s @ %d | lhs: %v, rhs: %v>", n.kind, n.pos, n.lhs, n.rhs)
+	return fmt.Sprintf("<%s | content: %v>", n.kind, n.content)
 }
 
 //go:generate stringer -type ActionType
@@ -111,6 +110,8 @@ const (
 
 type Action struct {
 	kind ActionType
+	pos  int
+	expr any
 }
 
 type Txr struct {
@@ -247,10 +248,11 @@ func (txr *Txr) BuildOps(first Token) bool {
 	for pri < pmax {
 		for i := 0; i < n; i += 1 {
 			tk = ops[i]
-			if (int(tk.extra.(OpType)) >> 4) != pri {
+			op := tk.extra.(OpType)
+			if (int(op) >> 4) != pri {
 				continue
 			}
-			nodes[i] = Node{NodeBinOp, tk.pos, nil, nodes[i], nodes[i+1]}
+			nodes[i] = Node{NodeBinOp, tk.pos, []any{op, nodes[i], nodes[i+1]}}
 			nodes = RemoveIndex(nodes, i+1)
 			ops = RemoveIndex(ops, i)
 			n -= 1
@@ -268,9 +270,9 @@ func (txr *Txr) BuildExpr(flags int) bool {
 
 	switch tk.kind {
 	case TokNumber:
-		txr.buildNode = Node{NodeNumber, tk.pos, nil, tk.extra, nil}
+		txr.buildNode = Node{NodeNumber, tk.pos, []any{tk.extra.(int)}}
 	case TokIdent:
-		txr.buildNode = Node{NodeIdent, tk.pos, nil, tk.extra, nil}
+		txr.buildNode = Node{NodeIdent, tk.pos, []any{tk.extra.(string)}}
 	case TokParOpen:
 		if txr.BuildExpr(0) {
 			return true
@@ -290,7 +292,7 @@ func (txr *Txr) BuildExpr(flags int) bool {
 			if txr.BuildExpr(int(FlagNoOps)) {
 				return true
 			}
-			txr.buildNode = Node{NodeUnOp, tk.pos, UnNegate, txr.buildNode, nil}
+			txr.buildNode = Node{NodeUnOp, tk.pos, []any{UnNegate, txr.buildNode}}
 		default:
 			return txr.ThrowAt("Unexpected token", tk)
 		}
@@ -322,10 +324,67 @@ func (txr *Txr) Build() bool {
 	return false
 }
 
+func (txr *Txr) CompileExpr(node Node) bool {
+	out := &txr.compileList
+	switch node.kind {
+	case NodeNumber:
+		*out = append(*out, Action{ActNumber, node.pos, node.content[0].(int)})
+	case NodeIdent:
+		*out = append(*out, Action{ActIdent, node.pos, node.content[0].(string)})
+	case NodeUnOp:
+		if txr.CompileExpr(node.content[1].(Node)) {
+			return true
+		}
+		*out = append(*out, Action{ActUnOp, node.pos, node.content})
+	case NodeBinOp:
+		if txr.CompileExpr(node.content[1].(Node)) {
+			return true
+		}
+		if txr.CompileExpr(node.content[2].(Node)) {
+			return true
+		}
+		*out = append(*out, Action{ActBinOp, node.pos, node.content[0].(OpType)})
+	default:
+		msg := fmt.Sprintf("Cannot compile node type %s", node.kind)
+		return txr.ThrowAt(msg, Token{TokenType(node.kind), node.pos, nil})
+	}
+
+	return false
+}
+
+func (txr *Txr) Compile(source string) ([]Action, error) {
+	fmt.Println(source)
+	if txr.Parse(source) {
+		return []Action{}, errors.New(txr.error)
+	}
+	fmt.Println(txr.tokens)
+
+	if txr.Build() {
+		return []Action{}, errors.New(txr.error)
+	}
+	fmt.Println(txr.buildNode)
+
+	out := &txr.compileList
+	*out = []Action{}
+	if txr.CompileExpr(txr.buildNode) {
+		return []Action{}, errors.New(txr.error)
+	}
+
+	n := len(*out)
+	arr := make([]Action, n)
+	for i := 0; i < n; i += 1 {
+		arr[i] = (*out)[i]
+	}
+	*out = []Action{}
+
+	return arr, nil
+}
+
 func main() {
 	txr := NewTxr()
-	txr.Parse("(10 + 2) * 4")
-	fmt.Println(txr.tokens)
-	txr.Build()
-	fmt.Println(txr.buildNode)
+	actions, err := txr.Compile("(10 + 2) * 4")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(actions)
 }
