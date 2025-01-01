@@ -406,20 +406,71 @@ func (txr *Txr) Compile(source string) ([]Action, error) {
 	}
 	*out = []Action{}
 
+	fmt.Println(arr)
+
 	return arr, nil
 }
 
+func (txr *Txr) ExecExit(msg string, action Action) bool {
+	return txr.ThrowAt(msg, Token{TokenType(action.kind), action.pos, nil})
+}
+
+func (txr *Txr) Exec(actions []Action) any {
+	length := len(actions)
+	pos := 0
+	stack := NewStack[any]()
+	for pos < length {
+		action := actions[pos]
+		pos += 1
+		switch action.kind {
+		case NUM:
+			stack.Push(action.arg.(int))
+		case UNARY:
+			stack.Push(-action.arg.(int))
+		case BINARY:
+			b := stack.Pop().(int)
+			a := stack.Pop().(int)
+			switch action.arg.(OpType) {
+			case OpAdd:
+				a += b
+			case OpSub:
+				a -= b
+			case OpMul:
+				a *= b
+			case OpFDiv:
+				a /= b
+			case OpFMod:
+				if b != 0 {
+					a %= b
+				} else {
+					a = 0
+				}
+			case OpIDiv:
+				panic("todo: floats")
+			default:
+				msg := fmt.Sprintf("Can't apply operator %s", action.kind)
+				return txr.ExecExit(msg, action)
+			}
+			stack.Push(a)
+		case IDENT:
+			panic("unimplemented")
+
+		default:
+			msg := fmt.Sprintf("Can't run action %s", action.kind)
+			return txr.ExecExit(msg, action)
+		}
+	}
+	r := stack.Pop()
+	txr.error = ""
+	return r
+}
+
 func main() {
-	// txr := NewTxr()
-	// actions, err := txr.Compile("(10 + 2) * 4")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(actions)
-	stack := NewStack[int]()
-	stack.Push(24)
-	fmt.Println(stack)
-	stack.Pop()
-	stack.Push(1, 5, 10)
-	fmt.Println(stack)
+	txr := NewTxr()
+	actions, err := txr.Compile("(10 + 2) * 4")
+	if err != nil {
+		panic(err)
+	}
+	result := txr.Exec(actions)
+	fmt.Println(result)
 }
