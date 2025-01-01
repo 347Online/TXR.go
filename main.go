@@ -102,16 +102,20 @@ func (n Node) String() string {
 type ActionType int
 
 const (
-	ActNumber ActionType = iota + 1
-	ActIdent
-	ActUnOp
-	ActBinOp
+	NUM ActionType = iota + 1
+	IDENT
+	UNARY
+	BINARY
 )
 
 type Action struct {
 	kind ActionType
 	pos  int
-	expr any
+	arg  any
+}
+
+func (a Action) String() string {
+	return fmt.Sprintf("$%s %v;", a.kind, a.arg)
 }
 
 type Txr struct {
@@ -328,14 +332,14 @@ func (txr *Txr) CompileExpr(node Node) bool {
 	out := &txr.compileList
 	switch node.kind {
 	case NodeNumber:
-		*out = append(*out, Action{ActNumber, node.pos, node.content[0].(int)})
+		*out = append(*out, Action{NUM, node.pos, node.content[0].(int)})
 	case NodeIdent:
-		*out = append(*out, Action{ActIdent, node.pos, node.content[0].(string)})
+		*out = append(*out, Action{IDENT, node.pos, node.content[0].(string)})
 	case NodeUnOp:
 		if txr.CompileExpr(node.content[1].(Node)) {
 			return true
 		}
-		*out = append(*out, Action{ActUnOp, node.pos, node.content})
+		*out = append(*out, Action{UNARY, node.pos, node.content})
 	case NodeBinOp:
 		if txr.CompileExpr(node.content[1].(Node)) {
 			return true
@@ -343,7 +347,7 @@ func (txr *Txr) CompileExpr(node Node) bool {
 		if txr.CompileExpr(node.content[2].(Node)) {
 			return true
 		}
-		*out = append(*out, Action{ActBinOp, node.pos, node.content[0].(OpType)})
+		*out = append(*out, Action{BINARY, node.pos, node.content[0].(OpType)})
 	default:
 		msg := fmt.Sprintf("Cannot compile node type %s", node.kind)
 		return txr.ThrowAt(msg, Token{TokenType(node.kind), node.pos, nil})
