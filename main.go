@@ -18,6 +18,31 @@ func RemoveIndex[T any](s []T, index int) []T {
 	return append(s[:index], s[:index+1]...)
 }
 
+type Stack[T any] struct {
+	inner []T
+}
+
+func NewStack[T any]() Stack[T] {
+	return Stack[T]{
+		inner: []T{},
+	}
+}
+
+func (s *Stack[T]) Size() int {
+	return len(s.inner)
+}
+
+func (s *Stack[T]) Push(items ...T) {
+	s.inner = append(s.inner, items...)
+}
+
+func (s *Stack[T]) Pop() T {
+	index := len(s.inner) - 1
+	item := s.inner[index]
+	s.inner = s.inner[:index]
+	return item
+}
+
 //go:generate stringer -type=TokenType
 type TokenType int
 
@@ -385,10 +410,16 @@ func (txr *Txr) Compile(source string) ([]Action, error) {
 }
 
 func main() {
-	txr := NewTxr()
-	actions, err := txr.Compile("(10 + 2) * 4")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(actions)
+	// txr := NewTxr()
+	// actions, err := txr.Compile("(10 + 2) * 4")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(actions)
+	stack := NewStack[int]()
+	stack.Push(24)
+	fmt.Println(stack)
+	stack.Pop()
+	stack.Push(1, 5, 10)
+	fmt.Println(stack)
 }
