@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 )
@@ -221,7 +222,7 @@ func (txr *Txr) Parse(str string) bool {
 					}
 				}
 				numstr := str[start:pos]
-				val, err := strconv.Atoi(numstr)
+				val, err := strconv.ParseFloat(numstr, 64)
 				if err != nil {
 					panic(err)
 				}
@@ -300,7 +301,7 @@ func (txr *Txr) BuildExpr(flags int) bool {
 
 	switch tk.kind {
 	case TokNumber:
-		txr.buildNode = Node{NodeNumber, tk.pos, []any{tk.extra.(int)}}
+		txr.buildNode = Node{NodeNumber, tk.pos, []any{tk.extra.(float64)}}
 	case TokIdent:
 		txr.buildNode = Node{NodeIdent, tk.pos, []any{tk.extra.(string)}}
 	case TokParOpen:
@@ -358,7 +359,7 @@ func (txr *Txr) CompileExpr(node Node) bool {
 	out := &txr.compileList
 	switch node.kind {
 	case NodeNumber:
-		*out = append(*out, Action{NUM, node.pos, node.content[0].(int)})
+		*out = append(*out, Action{NUM, node.pos, node.content[0].(float64)})
 	case NodeIdent:
 		*out = append(*out, Action{IDENT, node.pos, node.content[0].(string)})
 	case NodeUnOp:
@@ -425,12 +426,12 @@ func (txr *Txr) Exec(actions []Action) any {
 		pos += 1
 		switch action.kind {
 		case NUM:
-			stack.Push(action.arg.(int))
+			stack.Push(action.arg.(float64))
 		case UNARY:
-			stack.Push(-action.arg.(int))
+			stack.Push(-action.arg.(float64))
 		case BINARY:
-			b := stack.Pop().(int)
-			a := stack.Pop().(int)
+			b := stack.Pop().(float64)
+			a := stack.Pop().(float64)
 			switch action.arg.(OpType) {
 			case OpAdd:
 				a += b
@@ -442,12 +443,16 @@ func (txr *Txr) Exec(actions []Action) any {
 				a /= b
 			case OpFMod:
 				if b != 0 {
-					a %= b
+					a = math.Mod(a, b)
 				} else {
 					a = 0
 				}
 			case OpIDiv:
-				panic("todo: floats")
+				if b != 0 {
+					a = math.Trunc(a / b)
+				} else {
+					a = 0
+				}
 			default:
 				msg := fmt.Sprintf("Can't apply operator %s", action.kind)
 				return txr.ExecExit(msg, action)
